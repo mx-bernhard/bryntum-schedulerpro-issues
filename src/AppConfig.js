@@ -18,6 +18,7 @@ export const projectModel = new ProjectModel({
     resourceStore: {
         syncDataOnLoad: true,
         tree: true,
+        fields: ['parentId'],
     },
 
 });

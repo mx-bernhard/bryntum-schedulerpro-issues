@@ -13,7 +13,6 @@ import {
     BryntumSchedulerPro,
 } from '@bryntum/schedulerpro-react';
 import {
-    ProjectModel,
     StringHelper
 } from '@bryntum/schedulerpro';
 import { projectModel, schedulerConfig, } from './AppConfig';
@@ -28,7 +27,7 @@ export function useRerender() {
   }
   
 const App = () => {
-    const [grouped, updateGrouped] = useState(null);
+    const [grouped, updateGrouped] = useState('group-a');
     const rerender = useRerender();
     const resources = useMemo(() => [{
         id: '1',
@@ -128,6 +127,7 @@ const App = () => {
             <div style={{ margin: '1rem'}}>Group: {grouped != null ? grouped : 'without groups'}</div>
         </div>
         <BryntumSchedulerPro {...schedulerConfig}
+            onBeforeEventDropFinalize={({context}) => {context.valid = false;}}
             project={projectModel}
             eventStyle="regular"
             eventRenderer={eventTemplate}
@@ -160,7 +160,7 @@ const App = () => {
                     dateRange: false,
                 },
             }}
-            // treeFeature
+            treeFeature={{ expandOnCellClick: true }}
             taskEditFeature={false}
             headerZoomFeature={false}
             eventEditFeature

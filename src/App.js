@@ -3,7 +3,9 @@
  */
 
 // React libraries
-import React, { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
+import React, { useRef, useCallback, useEffect, useMemo, useReducer, useState } from 'react';
+
+import { range } from 'lodash';
 
 // Stylings
 import './App.scss';
@@ -13,11 +15,15 @@ import {
     BryntumSchedulerPro,
 } from '@bryntum/schedulerpro-react';
 import {
-    ProjectModel,
     StringHelper
 } from '@bryntum/schedulerpro';
 import { projectModel, schedulerConfig, } from './AppConfig';
 
+const addDays = function (date, days) {
+    var dateValue = new Date(date.valueOf());
+    dateValue.setDate(dateValue.getDate() + days);
+    return dateValue;
+}
 export const eventTemplate = (eventData) => {
     return `<div>${StringHelper.encodeHtml(eventData.eventRecord.data?.name)}</div>
     `;
@@ -25,10 +31,10 @@ export const eventTemplate = (eventData) => {
 export function useRerender() {
     const [, u] = useReducer(x => !x, true);
     return u;
-  }
-  
+}
+
 const App = () => {
-    const [grouped, updateGrouped] = useState(null);
+    const [grouped, updateGrouped] = useState('group-a');
     const rerender = useRerender();
     const resources = useMemo(() => [{
         id: '1',
@@ -40,35 +46,39 @@ const App = () => {
         name: "Arnold",
         groups: ['group-b-2'],
     }], []);
-    const [assignments, updateAssignments] = useState(() => [{ eventId: '1', resourceId: '1' }]);
+    const [assignments, updateAssignments] = useState(() => {
+        return range(1, 1000).map(i => ({ id: i, eventId: i, resourceId: '1' }));
+    });
 
     const maybeGroupedResources = useMemo(() => {
         if (grouped == null) {
             return resources;
         } else {
-            const namedGroups = resources.flatMap(r => r.groups).filter(g => g.startsWith(grouped));            
-            return namedGroups.map(namedGroup => 
-                ({ 
-                    id: namedGroup,
-                    name: namedGroup,
-                    expanded: true,
-                    children: resources.filter(r => r.groups.some(g => g === namedGroup)).map(r => ({ ...r, id: namedGroup + '/' + r.id }))
-                })
+            const namedGroups = resources.flatMap(r => r.groups).filter(g => g.startsWith(grouped));
+            return namedGroups.map(namedGroup =>
+            ({
+                id: namedGroup,
+                name: namedGroup,
+                expanded: true,
+                children: resources.filter(r => r.groups.some(g => g === namedGroup)).map(r => ({ ...r, id: namedGroup + '/' + r.id }))
+            })
             );
         }
     }, [grouped, resources]);
-    const [events, updateEvents] = useState(() => [{
-        id: 1,
-        name: "appointment",
-        startDate: "2020-12-01",
-        duration: 1,
-        durationUnit: 'd',
-    }], []);
+    const [events, updateEvents] = useState(() => {
+        return range(1, 1000).map(i => ({
+            id: i,
+            name: "appointment",
+            startDate: addDays(new Date(2020, 11, 1, 10), i),
+            duration: 1,
+            durationUnit: 'd',
+        }));
+    }, []);
     const maybeGroupedAssignments = useMemo(() => {
         if (grouped != null) {
             return resources[0].groups.filter(g => g.startsWith(grouped)).flatMap(g => {
                 return assignments.map(a => ({
-                    id: g + '/' + a.resourceId,
+                    id: a.id + '/' + g + '/' + a.resourceId,
                     eventId: a.eventId,
                     resourceId: g + '/' + a.resourceId,
                 }));
@@ -87,19 +97,34 @@ const App = () => {
             return groupModes[(groupModes.indexOf(old) + 1) % 3];
         });
     }, []);
-
+    const missedUpdateRef = useRef(false);
+    const [missedUpdateState, updateMissedUpdate] = useState({});
+    const updatingRef = useRef(false);
     useEffect(() => {
         (async () => {
             console.log('updating');
-            await projectModel.loadInlineData({
-                eventsData: events,
-                resourcesData: maybeGroupedResources,
-                assignmentsData: maybeGroupedAssignments,
-            });
-            console.log('finished updating');            
+            if (updatingRef.current) {
+                // missedUpdateRef.current = true;
+                // return;
+            }
+            updatingRef.current = true;
+            try {
+                await projectModel.loadInlineData({
+                    eventsData: events,
+                    resourcesData: maybeGroupedResources,
+                    assignmentsData: maybeGroupedAssignments,
+                });
+            } finally {
+                updatingRef.current = false;
+            } 
+            console.log('finished updating');
+            if (missedUpdateRef.current) {
+                missedUpdateRef.current = false;
+                updateMissedUpdate({});
+            }
         })();
-    }, [assignments, events, maybeGroupedAssignments, maybeGroupedResources, rerender, resources])
-    
+    }, [assignments, events, maybeGroupedAssignments, maybeGroupedResources, rerender, resources, missedUpdateState])
+
     useEffect(() => {
         const asgChangeListener = (evt) => {
             if (evt.changes?.resourceId != null) {
@@ -116,22 +141,22 @@ const App = () => {
         projectModel.eventStore.addListener('change', eventChangeListener);
         return () => {
             projectModel.eventStore.removeListener('change', eventChangeListener);
-            projectModel.assignmentStore.removeListener('change', asgChangeListener);            
+            projectModel.assignmentStore.removeListener('change', asgChangeListener);
         };
     }, [])
-    
-    const scrollable = useMemo(() => ({ onScroll: e => console.log(e)}), []);
-    
+
+    const scrollable = useMemo(() => ({ onScroll: e => console.log(e) }), []);
+
     return <div style={{ minHeight: '50vh' }}>
         <div style={{ display: 'flex', margin: '1rem' }}>
             <button type="button" onClick={toggleGroupMode}>Toggle grouping mode</button>
-            <div style={{ margin: '1rem'}}>Group: {grouped != null ? grouped : 'without groups'}</div>
+            <div style={{ margin: '1rem' }}>Group: {grouped != null ? grouped : 'without groups'}</div>
         </div>
         <BryntumSchedulerPro {...schedulerConfig}
             project={projectModel}
             eventStyle="regular"
             eventRenderer={eventTemplate}
-            headerMenuFeature={false} 
+            headerMenuFeature={false}
             cellMenuFeature={false}
             dependencyEditFeature={false}
             dependenciesFeature={false}

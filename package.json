@@ -1,12 +1,13 @@
 {
-  "name": "timeline",
-  "description": "React Pro Timeline demo",
-  "version": "4.3.0",
+  "name": "issue",
+  "description": "issue",
+  "version": "5.2.0",
   "author": {
     "name": "Bryntum",
     "url": "https://bryntum.com",
     "email": "info@bryntum.com"
   },
+  "packageManager": "yarn@3.2.4",
   "license": "commercial",
   "homepage": "./",
   "scripts": {
@@ -21,6 +22,7 @@
     "@bryntum/demo-resources": "^1.0.1",
     "@bryntum/schedulerpro": "5.0.7",
     "@bryntum/schedulerpro-react": "5.0.7",
+    "lodash": "^4.17.21",
     "react": "~17.0.1",
     "react-dom": "~17.0.1",
     "react-scripts": "4.0.1",

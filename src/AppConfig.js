@@ -19,6 +19,7 @@ export const projectModel = new ProjectModel({
         syncDataOnLoad: true,
         tree: true,
     },
+    // delayCalculation: false,
 
 });
 

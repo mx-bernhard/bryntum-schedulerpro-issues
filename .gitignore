@@ -26,3 +26,5 @@ yarn-error.log*
 # copied resources
 public/themes
 /.idea/
+.yarn/
+.yarnrc.yml
